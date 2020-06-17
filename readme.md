@@ -20,6 +20,19 @@ One copy of data sheet of `W25Q64JV` is placed at [docs](docs) folder.
   ![libMPSSE-SPI](docs/libMPSSE-spi.png)
 
 
+## Connections
+
+| SPI Pin | UM232H Pin |
+|---------|------------|
+| SCLK    | ADBUS0     |
+| MOSI    | ADBUS1     |
+| MISO    | ADBUS2     |
+| CS0     | ADBUS3     |
+
+**Notes**
+1. Connections must be made to the VIO and 5V0 power pins of UM232H module before the module will be recognised by a PC.
+2. For th details of pinout, refer [pyftdi - FTDI device pinout](https://eblot.github.io/pyftdi/pinout.html#ftdi-device-pinout).
+
 ## Building the example
 
 * Configure the build using cmake
@@ -171,3 +184,8 @@ e0 e1 e2 e3 e4 e5 e6 e7 - e8 e9 ea eb ec ed ee ef
 f0 f1 f2 f3 f4 f5 f6 f7 - f8 f9 fa fb fc fd fe ff
 
 ```
+
+## References
+1. [FTDI Application Note 178 - User Guide For LibMPSSE-SPI](https://www.ftdichip.com/Support/Documents/AppNotes/AN_178_User%20Guide%20for%20LibMPSSE-SPI.pdf)
+2. [FTDI Application Note 411 - AN_411_FTx232H MPSSE I2C Master Example in Csharp](https://www.ftdichip.com/Support/Documents/AppNotes/AN_411_FTx232H%20MPSSE%20I2C%20Master%20Example%20in%20Csharp.pdf)
+3. [pyftdi - FTDI device pinout](https://eblot.github.io/pyftdi/pinout.html#ftdi-device-pinout)
