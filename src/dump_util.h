@@ -1,14 +1,10 @@
 #ifndef DUMP_UTIL_H
 #define DUMP_UTIL_H
 
-#include <string>
+#include <string.h>
 
 
-class DumpUtil {
-public:
-    static std::string hexlify(const char *buf, size_t size);
-    static std::string hexlify(std::string const &str);
-};
+void dump_buf(void *buf, size_t len);
 
 
 #endif // DUMP_UTIL_H
