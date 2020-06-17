@@ -1,0 +1,183 @@
+# *****************************************************************************
+# One component/package builder sconscript.
+# In this script file, the source files of the components are automatically
+# discovered. Also dependency on imported component is specified here.
+#
+# Eyob D. 11-NOV-2008
+# *****************************************************************************
+# ONLY MODIFY THE TOP PART OF THE SCRIPT (i.e. PRIMARY CONFIGURATION)
+# *****************************************************************************
+# Primary configuration.
+# *****************************************************************************
+
+# A) List any source files that you want to exclude from the automatically found
+# files. Example usage: src_exclude = ['t1.c', 't3.c'] excludes t1.c and t3.c
+# from the build. Do not add file path information. Just the file name.
+src_exclude = []
+
+# B) List all imported standard components that this component is immediately
+# dependent on. Only list immediate dependency not secondary dependency.
+# The default repository root is set in the SConstruct. If default is not used,
+# then full path must be given.
+# Example usage:
+# imported_components = ['common/det/tags/v0.2.1',
+#                        'common/ads_lib/tags/v1.0.0',
+#          'https://jirahbn/svn/surt_2g/components/common/comm_lib/tags/v1.3.0']
+#
+imported_components = []
+
+# C) List all internal components that this component is dependent on.
+# That is, components that are in sub-directories under this component or
+# components under directories anchored to the root dir (where SConstruct is).
+# All these directories should contain sconscript_comp file. This list is
+# usually empty.
+internal_components = []
+
+# D) List of auto generated items, each tuple describes
+# (generator python script, input file, generated output file)
+# Example usage:
+# auto_gen_items = [('build_synch_test.py', 'vin1_test1.xls', 'vin1_test1.csv')]
+#
+# Or you can do a more complicated instruction which do not fit the above simple
+# instruction.
+# auto_gen_items = [('#imported/d_xml/v3.5.4/d_xml.exe', '-o $CURR_DIR$', ''),
+#                   ('#imported/pretty/v1.2.3/source/pretty.exe',
+#                    '-i $CURR_DIR$\\test.c', '')
+#                  ]
+# Note that $CURR_DIR$ is a variable that is used to reference the current
+# path of this script. You cannot use dot '.' as you would in command line.
+auto_gen_items = []
+
+# whether to add current folder to preprocessor (include header) search list.
+append_to_pp_path = False
+
+# *****************************************************************************
+# Do not modify the code below.
+# *****************************************************************************
+import catsr_framework
+
+# Import the variables from the outside world
+Import('CDT', 'build_type','app_trgt_env', 'app_utst_env')
+
+# Tell component dependency tree tracker, that we are entering this script
+CDT.script_enter('comp')
+
+# Note: We don't clone the environments. This means that whatever we change is
+# going to stay with them after we leave this script file.
+if build_type == 'regular':
+    env = app_trgt_env
+elif build_type == 'unittest':
+    env = app_utst_env
+    # Exclude the main application's file that contains main() function.
+    # Unit test build replaces with its own main function.
+    src_exclude += [app_utst_env['TRGT_MAIN_FILE']]
+else:
+    print("Build script error: Unknown build_type - " + build_type)
+    exit(1)
+
+# Just make sure we do not have any list of lists or list of strings.
+imported_components = env.Flatten(env.Split(imported_components))
+internal_components = env.Flatten(env.Split(internal_components))
+
+# Import the dependent components from SVN
+imported_components = env.ImportStdComponentsFromSvn(imported_components)
+
+# Initialize the overall result dictionary
+result = {'source_c':[], 'source_cc':[],'source_s':[], 'source_h':[], 'objects':[],
+          'ut_source_h':[], 'ut_in':[], 'libs':[], 'link_script':[]}
+
+import os
+# Recurse into script of each dependency component, append what they return
+# to the overall result.
+for ic in imported_components + internal_components:
+    src_dir, bld_dir = env.GetComponentSrcBldPath(ic)
+    script_file = '%s/sconscript_comp' % src_dir
+    if not os.path.isfile(env.File(script_file).srcnode().abspath):
+        script_file = '%s/sconscript_lib' % src_dir
+        if not os.path.isfile(env.File(script_file).srcnode().abspath):
+            print('-'*75)
+            print("Framework Error: Don't know how to build component.")
+            print("Component: [%s]" % ic)
+            print("The component does not have sconscript_* file.")
+            print("Make sure you have sconscript_comp or sconscript_lib")
+            print("in the component.")
+            print('-'*75)
+            env.Exit(1)
+    r = SConscript(script_file,
+                   variant_dir=bld_dir,
+                   duplicate=0,
+                   exports='build_type  app_trgt_env  app_utst_env')
+    env.MergeDicts(result,r)
+
+
+# Register this component's path on the preprocssor search list on both the
+# normal and unit-test targets.
+if append_to_pp_path:
+    env.AppendPPPath()
+else:
+    env.Append(EXCLUDE_HEADER_DIRS = env.Dir('.').srcnode().path)
+    
+
+# The assembly file extension might be different than *.s so try to get it
+# out of the the environment. Otherwise we assume *.s extension. This should
+# be okay for most tools.
+try:
+    assembly_file_ext = list((env['ASSEMBLY_FILE_EXT'],))
+except KeyError:
+    assembly_file_ext = ['s']
+
+# Auto generate anything that needs auto generation only for regular build.
+# TODO: This is always building anytime builder runs...
+# Is this a desirable behaviour?
+if build_type == 'regular':
+    auto_proj_root = env.Dir('#').abspath
+    auto_cmd_path_root = os.path.join(auto_proj_root,
+                                      env.Dir('.').srcnode().path)
+    for auto_c, auto_s, auto_t in auto_gen_items:
+        auto_cmd = auto_c.replace('$CURR_DIR$', auto_cmd_path_root)
+        auto_cmd = env.File(auto_cmd).srcnode().abspath
+        auto_src = auto_s.replace('#', auto_proj_root + '/')
+        auto_tgt = auto_t.replace('#', auto_proj_root + '/')
+        auto_src = auto_src.replace('$CURR_DIR$', auto_cmd_path_root)
+        auto_tgt = auto_tgt.replace('$CURR_DIR$', auto_cmd_path_root)
+        env.Execute('@%s %s %s' % (auto_cmd, auto_src, auto_tgt))
+
+# Discover the files of the component.
+comp_c_files = env.FindComponentFiles(['c', 'cc'], src_exclude)
+comp_s_files = env.FindComponentFiles(assembly_file_ext, src_exclude)
+comp_h_files = env.FindComponentFiles(['h'], src_exclude)
+
+# Also discover pre-built libraries that this component exports.
+comp_lib_files = env.FindComponentFiles(['lib', 'a'], exclude=[])
+
+# Also discover linker script or linker command files.
+comp_linkscript_files = env.FindComponentFiles(['ld', 'cmd', 'icf'], exclude=[])
+
+# We want the discovered files to be built relative to the build directory
+# of this this script and not directly inside the source directories.
+c_files = env.FileRelativeToComponent(comp_c_files)
+s_files = env.FileRelativeToComponent(comp_s_files)
+
+# Build this component's files into objects and append to the overall result
+comp_o_files = env.Object(c_files + s_files)
+
+r = {'source_c':comp_c_files, 'source_s':comp_s_files,
+     'source_h':comp_h_files, 'objects':comp_o_files,
+     'libs':comp_lib_files, 'link_script':comp_linkscript_files}
+env.MergeDicts(result,r)
+
+# This is a special component which returns a library on the file.
+
+# For a unittest build, discover and build unittest files that corresond to this
+# component's c files. Append returned result to the overall result.
+if build_type=='unittest':
+    r = catsr_framework.BuildUtstFiles(env, c_files)
+    env.MergeDicts(result,r)
+
+# Tell component dependency tree tracker, that we are exiting this script
+CDT.script_exit('comp')
+
+# Return the result of building this component
+Return('result')
+
+
