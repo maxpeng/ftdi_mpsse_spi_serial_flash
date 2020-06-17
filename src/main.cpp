@@ -64,7 +64,7 @@ int main() {
 void check_status(FT_STATUS status)
 {
     if (status != FT_OK) {
-        fmt::print("{0}:{1}:{3}: status(0x%x) \ != FT_OK\n", __FILE__, __LINE__, __FUNCTION__, status);
+        fmt::print("{0}:{1}:{3}: status(0x%x) != FT_OK\n", __FILE__, __LINE__, __FUNCTION__, status);
         exit(-1);
     }
 }
