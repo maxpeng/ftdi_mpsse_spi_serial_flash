@@ -86,6 +86,10 @@ int main() {
     // 4.4 read page 0.
     read_page(ftHandle, 0x00);
 
+    // 5. clean up.
+    SPI_CloseChannel(ftHandle);
+    Cleanup_libMPSSE();
+
     return 0;
 }
 
