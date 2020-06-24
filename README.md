@@ -2,7 +2,7 @@
 
 This project contains an [LibMPSSE-SPI](https://www.ftdichip.com/Support/SoftwareExamples/MPSSE/LibMPSSE-SPI.htm) example to program [Winbod W25Q64JV](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/index.html?__locale=en&partNo=W25Q64JV) serial flash connected to the SPI channel of [UM232H](https://www.ftdichip.com/Products/Modules/DevelopmentModules.htm#UM232H) module.
 
-One copy of data sheet of `W25Q64JV` is placed at [docs](docs) folder.
+One copy of data sheet of `W25Q64JV` is placed at [here](docs/w25q64jv%20revj%2003272018%20plus.pdf).
 
 
 ## FTDI UM232H
